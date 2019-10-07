@@ -1,0 +1,44 @@
+from threading import Thread, Lock
+import sys
+import time
+from app.models import Task
+
+class ThreadQueue(Thread):
+    def __init__(self):
+        super().__init__()
+        self._threads = {}
+        self._lock = Lock()
+
+    def run(self):
+        delete = []
+        while True:
+            time.sleep(5)
+
+            with self._lock:
+                #
+                for guid, thread in self._threads.items():
+                    if not thread.is_alive():
+                        task = Task.query.get(guid)
+                        task.complete = True
+                        delete.append(guid)
+                        print('finished')
+
+                #
+                for guid in delete:
+                    del self._threads[guid]
+                delete.clear()
+
+    def enqueue(self, name, args):
+        with self._lock:
+            module = sys.modules[__name__]
+            task = getattr(module, name)
+            if args is not None:
+                thread = Thread(target=task, args=args)
+            thread.start()
+            guid = id(thread)
+            self._threads[guid] = thread
+
+        return guid
+
+def create_restore_point():
+    pass
